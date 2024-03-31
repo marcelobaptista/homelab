@@ -1,7 +1,7 @@
 version: "3.8"
 
 networks:
-  monitoring:
+  services::
     name: services
     driver: bridge
     ipam:
