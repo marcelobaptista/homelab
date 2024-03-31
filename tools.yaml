@@ -54,21 +54,21 @@ services:
     networks:
       - tools
 
-  portainer:
-    container_name: portainer
-    hostname: portainer
-    image: portainer/portainer-ce:latest
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${ROOT}/appdata/portainer/data:/data
-    ports:
-      - 9000:9000
-    networks:
-      - tools
+  # portainer:
+  #   container_name: portainer
+  #   hostname: portainer
+  #   image: portainer/portainer-ce:latest
+  #   restart: unless-stopped
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - ${ROOT}/appdata/portainer/data:/data
+  #   ports:
+  #     - 9000:9000
+  #   networks:
+  #     - tools
 
   heimdall:
     container_name: heimdall
