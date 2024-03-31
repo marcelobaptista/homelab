@@ -1,12 +1,12 @@
 version: "3.8"
 
-# networks:
-#   tools:
-#     name: tools
-#     driver: bridge
-#     ipam:
-#       config:
-#         - subnet: 172.21.0.0/16
+networks:
+  tools:
+    name: tools
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
 
 services:
   
