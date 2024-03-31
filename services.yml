@@ -26,9 +26,18 @@ services:
       - 443:443/tcp
       - 853:853/tcp
       - 3300:3000/tcp
+      - 5353:5353/udp
+      - 5443:5443/tcp
+      - 5443:5443/udp
     volumes:
       - adguard_data:/opt/adguardhome/work
       - adguard_data:/opt/adguardhome/conf
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adguardhome.entrypoints=insecure"
+      - "traefik.http.routers.adguardhome.rule=Host(`adguard.$DOMAIN`)"
+      - "traefik.http.services.adguardhome.loadbalancer.server.port=3000"
+      # - "traefik.http.routers.adguardhome.tls.certresolver=le"
     networks:
       - services
   
