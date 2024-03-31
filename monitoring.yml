@@ -1,0 +1,195 @@
+version: "3.8"
+
+networks:
+  monitoring:
+    name: monitoring
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+  loki_data: {} 
+
+services:
+
+  adguard:
+    container_name: adguard
+    hostname: adguard
+    image: adguard/adguardhome:latest
+    restart: unless-stopped
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 67:67/udp
+      - 68:68/tcp
+      - 68:68/udp
+      - 443:443/tcp
+      - 853:853/tcp
+      - 3300:3000/tcp
+    volumes:
+      - ${ROOT}/appdata/adguard/work:/opt/adguardhome/work
+      - ${ROOT}/appdata/adguard/conf:/opt/adguardhome/conf
+    networks:
+      - monitoring
+
+  node-exporter:
+    container_name: node-exporter
+    hostname: node-exporter
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs  '
+      - '--path.sysfs=/host/sys'
+      - '--collector.cpu'
+      - '--collector.disable-defaults'
+      - '--collector.diskstats'
+      - '--collector.filesystem'
+      - '--collector.hwmon'
+      - '--collector.loadavg'
+      - '--collector.meminfo'
+      - '--collector.netdev'
+      - '--collector.netstat'
+      - '--collector.stat'
+      - '--collector.thermal_zone'
+      - '--web.disable-exporter-metrics'
+      - '--collector.filesystem.ignored-mount-points'
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    networks:
+      - monitoring
+
+  speedtest-exporter:
+    container_name: speedtest-exporter
+    hostname: speedtest-exporter
+    image: ghcr.io/miguelndecarvalho/speedtest-exporter
+    restart: unless-stopped
+    ports:
+      - 9798:9798
+    networks:
+      - monitoring
+
+  prometheus:
+    container_name: prometheus
+    hostname: prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped 
+    volumes:
+      - prometheus_data:/etc/prometheus
+    environment:
+      - TZ=${TZ}
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        cat <<EOF > /etc/prometheus/prometheus.yml
+        global:
+          scrape_interval: 30s
+          evaluation_interval: 30s
+        scrape_configs:
+          - job_name: 'prometheus'
+            static_configs:
+              - targets: ['localhost:9090']
+                
+          - job_name: 'node-exporter'
+            static_configs:
+              - targets: ['node-exporter:9100']
+                
+          - job_name: 'cadvisor'
+            static_configs:
+              - targets: ['cadvisor:8080']
+                
+          - job_name: 'speedtest-exporter'
+            scrape_interval: 5m
+            evaluation_interval: 5m
+            scrape_timeout: 2m
+            static_configs:
+              - targets: ['speedtest-exporter:9798']
+                
+        EOF
+        /bin/prometheus --config.file=/etc/prometheus/prometheus.yml \
+          --enable-feature=native-histograms \
+          --storage.tsdb.path=/prometheus \
+          --web.console.libraries=/usr/share/prometheus/console_libraries \
+          --web.console.templates=/usr/share/prometheus/consoles \
+          --web.enable-remote-write-receiver \
+          --web.enable-lifecycle
+    ports:
+      - 9090:9090
+    depends_on:
+      - cadvisor
+    networks:
+      - monitoring
+
+  grafana:
+    container_name: grafana
+    hostname: grafana
+    image: grafana/grafana:latest
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_METRICS_ENABLED=true
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_SECURITY_ADMIN_PASSWORD=123456
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy 
+          orgId: 1
+          url: http://prometheus:9090
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+        EOF
+        /run.sh
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana  
+    networks:
+      - monitoring
+  
+  cadvisor:
+    container_name: cadvisor
+    hostname: cadvisor
+    image: gcr.io/cadvisor/cadvisor:latest
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    depends_on:
+      - redis
+    ports:
+      - 8088:8080
+    networks:
+      - monitoring
+      
+  redis:
+    container_name: redis
+    hostname: redis
+    image: redis:latest
+    restart: unless-stopped
+    ports:
+    - 6379:6379
+    networks:
+      - monitoring
+  

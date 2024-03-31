@@ -1,0 +1,88 @@
+version: "3.8"
+
+networks:
+  tools:
+    name: tools
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+services:
+  
+  it-tools:
+    container_name: it-tools
+    hostname: it-tools
+    image: corentinth/it-tools:latest
+    restart: unless-stopped
+    ports:
+      - 8100:80
+    networks:
+      - tools
+      
+  stirling-pdf:
+    container_name: stirling-pdf
+    hostname: stirling-pdf
+    image: frooodle/s-pdf:latest
+    restart: always
+    volumes:
+      - ${ROOT}/appdata/stirling-pdf/tessdata:/usr/share/tessdata #Required for extra OCR languages
+      - ${ROOT}/appdata/stirling-pdf/configs:/configs
+      - ${ROOT}/appdata/stirling-pdf/logs:/logs/
+    environment:
+      - DOCKER_ENABLE_SECURITY=false
+      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+    ports:
+      - 8200:8080
+    networks:
+      - tools
+
+  filebrowser:
+    container_name: filebrowser
+    hostname: filebrowser
+    image: hurlenko/filebrowser
+    restart: always
+    ports:
+      - 8300:8080
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /:/data # the config to share in the server
+      - ${ROOT}/appdata/filebrowser/config:/config
+    networks:
+      - tools
+
+  portainer:
+    container_name: portainer
+    hostname: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${ROOT}/appdata/portainer/data:/data
+    ports:
+      - 9000:9000
+    networks:
+      - tools
+
+  heimdall:
+    container_name: heimdall
+    hostname: heimdall
+    image: lscr.io/linuxserver/heimdall
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID} 
+      - PGID=${PGID} 
+      - TZ=${TZ} 
+    volumes:
+      - ${ROOT}/appdata/heimdall/config:/config
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - tools
