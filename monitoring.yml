@@ -10,29 +10,8 @@ networks:
 volumes:
   prometheus_data: {}
   grafana_data: {}
-  loki_data: {} 
 
 services:
-
-  adguard:
-    container_name: adguard
-    hostname: adguard
-    image: adguard/adguardhome:latest
-    restart: unless-stopped
-    ports:
-      - 53:53/tcp
-      - 53:53/udp
-      - 67:67/udp
-      - 68:68/tcp
-      - 68:68/udp
-      - 443:443/tcp
-      - 853:853/tcp
-      - 3300:3000/tcp
-    volumes:
-      - ${ROOT}/appdata/adguard/work:/opt/adguardhome/work
-      - ${ROOT}/appdata/adguard/conf:/opt/adguardhome/conf
-    networks:
-      - monitoring
 
   node-exporter:
     container_name: node-exporter

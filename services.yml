@@ -1,0 +1,35 @@
+version: "3.8"
+
+networks:
+  monitoring:
+    name: services
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+volumes:
+  adguard_data: {}
+
+services:
+
+  adguard:
+    container_name: adguard
+    hostname: adguard
+    image: adguard/adguardhome:latest
+    restart: unless-stopped
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 67:67/udp
+      - 68:68/tcp
+      - 68:68/udp
+      - 443:443/tcp
+      - 853:853/tcp
+      - 3300:3000/tcp
+    volumes:
+      - adguard_data:/opt/adguardhome/work
+      - adguard_data:/opt/adguardhome/conf
+    networks:
+      - services
+  
+  
