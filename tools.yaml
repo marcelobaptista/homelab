@@ -83,6 +83,6 @@ services:
       - ${ROOT}/appdata/heimdall/config:/config
     ports:
       - 80:80
-      - 443:443
+      # - 443:443
     networks:
       - tools
